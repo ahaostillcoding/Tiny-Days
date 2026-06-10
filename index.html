@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>像素日记</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="desk">
+      <section class="book" aria-label="像素日记应用">
+        <div class="spine" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <section class="page page-left" aria-labelledby="app-title">
+          <header class="brand-row">
+            <div>
+              <h1 id="app-title">像素日记 <span aria-hidden="true">♥</span></h1>
+              <p class="quiet-line">每天一颗像素，慢慢把一年点亮。</p>
+            </div>
+            <button class="icon-button" id="exportButton" type="button" title="保存快照" aria-label="保存快照">⇩</button>
+          </header>
+
+          <div class="section-head">
+            <h2>365 天</h2>
+            <div class="legend" aria-label="图例">
+              <span><i class="mark mark-saved"></i>有记录</span>
+              <span><i class="mark mark-today"></i>今天</span>
+            </div>
+          </div>
+
+          <div class="year-board" id="yearBoard" aria-label="今年的 365 天像素日记"></div>
+          <p class="hint">鼠标停在格子上，可以看见那天留下的小图。</p>
+        </section>
+
+        <section class="page page-right">
+          <header class="today-bar">
+            <button class="icon-button" id="prevDayButton" type="button" title="前一天" aria-label="前一天">‹</button>
+            <div class="today-copy">
+              <p>今天</p>
+              <time id="currentDate"></time>
+            </div>
+            <button class="icon-button" id="nextDayButton" type="button" title="后一天" aria-label="后一天">›</button>
+          </header>
+
+          <div class="studio">
+            <div class="canvas-wrap">
+              <div class="pixel-rain" id="pixelRain" aria-hidden="true"></div>
+              <div class="pixel-canvas" id="pixelCanvas" role="grid" aria-label="16 乘 16 像素绘图板"></div>
+            </div>
+
+            <div class="tool-row" aria-label="绘图工具">
+              <button class="tool-button active" id="drawTool" type="button" title="铅笔" aria-label="铅笔">✎</button>
+              <button class="tool-button" id="eraseTool" type="button" title="橡皮" aria-label="橡皮">⌑</button>
+              <div class="palette" id="palette" aria-label="四色复古调色盘"></div>
+            </div>
+            <p class="palette-note">只许使用这 4 种颜色。没有撤销，也挺好。</p>
+          </div>
+
+          <section class="poem-card" aria-labelledby="poem-title">
+            <h2 id="poem-title">像素诗</h2>
+            <p id="poemText">点下第一颗像素，今天就开始发光。</p>
+          </section>
+        </section>
+      </section>
+
+      <section class="memory-strip" aria-labelledby="strip-title">
+        <div class="strip-head">
+          <h2 id="strip-title">回忆长廊</h2>
+          <span>我的一年 →</span>
+        </div>
+        <div class="strip-days" id="memoryStrip"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
