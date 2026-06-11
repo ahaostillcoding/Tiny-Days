@@ -441,6 +441,104 @@ h2 {
   line-height: 1.7;
 }
 
+.sync-card {
+  width: min(100%, 560px);
+  margin: 24px auto 0;
+  padding: 22px 24px;
+  border: 1px dashed rgba(116, 80, 38, 0.42);
+  background: rgba(255, 242, 203, 0.42);
+}
+
+.sync-title-row,
+.sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-title-row {
+  justify-content: space-between;
+}
+
+.sync-card h2 {
+  color: #668953;
+  font-size: 22px;
+}
+
+.auto-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sync-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sync-card label {
+  color: #6c5335;
+  font-size: 14px;
+}
+
+.sync-card input[type="text"],
+.sync-card input[type="password"] {
+  width: 100%;
+  height: 38px;
+  margin-top: 6px;
+  border: 1px solid rgba(77, 55, 30, 0.32);
+  border-radius: 4px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: rgba(255, 249, 225, 0.82);
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  font-size: 14px;
+}
+
+.token-line {
+  display: block;
+  margin-top: 12px;
+}
+
+.sync-actions {
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.paper-button {
+  min-height: 36px;
+  border: 1px dashed rgba(77, 55, 30, 0.45);
+  border-radius: 5px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: rgba(255, 238, 193, 0.55);
+  cursor: pointer;
+}
+
+.paper-button:hover {
+  border-color: var(--red);
+  background: rgba(246, 222, 169, 0.78);
+}
+
+.sync-status {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sync-status.error {
+  color: #9f362f;
+}
+
+.sync-status.ok {
+  color: #4d753f;
+}
+
 .memory-strip {
   margin-top: 22px;
   padding: 28px 46px 34px;
@@ -557,6 +655,10 @@ h2 {
 
   .poem-card p {
     font-size: 19px;
+  }
+
+  .sync-grid {
+    grid-template-columns: 1fr;
   }
 
   .strip-days {

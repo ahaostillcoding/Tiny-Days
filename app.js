@@ -6,6 +6,8 @@ const palette = [
 ];
 
 const STORAGE_KEY = "pixel-diary:v1";
+const GITHUB_SYNC_KEY = "pixel-diary:github-sync:v1";
+const GITHUB_TOKEN_KEY = "pixel-diary:github-token:v1";
 const size = 16;
 const totalPixels = size * size;
 
@@ -21,12 +23,24 @@ const eraseTool = document.querySelector("#eraseTool");
 const prevDayButton = document.querySelector("#prevDayButton");
 const nextDayButton = document.querySelector("#nextDayButton");
 const exportButton = document.querySelector("#exportButton");
+const repoOwnerInput = document.querySelector("#repoOwnerInput");
+const repoNameInput = document.querySelector("#repoNameInput");
+const branchInput = document.querySelector("#branchInput");
+const dataPathInput = document.querySelector("#dataPathInput");
+const tokenInput = document.querySelector("#tokenInput");
+const autoSyncInput = document.querySelector("#autoSyncInput");
+const saveSyncSettingsButton = document.querySelector("#saveSyncSettingsButton");
+const syncNowButton = document.querySelector("#syncNowButton");
+const loadGitHubButton = document.querySelector("#loadGitHubButton");
+const syncStatus = document.querySelector("#syncStatus");
 
 let state = loadState();
+let syncConfig = loadSyncConfig();
 let selectedColor = palette[1].value;
 let tool = "draw";
 let activeDate = startOfDay(new Date());
 let activeKey = dateKey(activeDate);
+let syncTimer = null;
 
 function loadState() {
   try {
@@ -38,6 +52,74 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function inferRepoDefaults() {
+  const defaults = {
+    owner: "ahaostillcoding",
+    repo: "Tiny-Days",
+    branch: "main",
+    dataPath: "data/entries",
+    autoSync: false,
+  };
+
+  const hostParts = window.location.hostname.split(".");
+  const repoFromPath = window.location.pathname.split("/").filter(Boolean)[0];
+  if (hostParts.length >= 3 && hostParts[1] === "github" && hostParts[2] === "io") {
+    defaults.owner = hostParts[0];
+    if (repoFromPath) defaults.repo = repoFromPath;
+  }
+
+  return defaults;
+}
+
+function loadSyncConfig() {
+  const defaults = inferRepoDefaults();
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem(GITHUB_SYNC_KEY)) };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSyncConfig() {
+  syncConfig = {
+    owner: repoOwnerInput.value.trim(),
+    repo: repoNameInput.value.trim(),
+    branch: branchInput.value.trim() || "main",
+    dataPath: normalizeDataPath(dataPathInput.value),
+    autoSync: autoSyncInput.checked,
+  };
+  localStorage.setItem(GITHUB_SYNC_KEY, JSON.stringify(syncConfig));
+
+  const token = tokenInput.value.trim();
+  if (token) sessionStorage.setItem(GITHUB_TOKEN_KEY, token);
+  renderSyncSettings();
+  setSyncStatus("设置已保存。", "ok");
+}
+
+function renderSyncSettings() {
+  repoOwnerInput.value = syncConfig.owner;
+  repoNameInput.value = syncConfig.repo;
+  branchInput.value = syncConfig.branch;
+  dataPathInput.value = syncConfig.dataPath;
+  autoSyncInput.checked = Boolean(syncConfig.autoSync);
+  tokenInput.value = sessionStorage.getItem(GITHUB_TOKEN_KEY) || "";
+}
+
+function normalizeDataPath(path) {
+  return (path || "data/entries").trim().replace(/^\/+|\/+$/g, "") || "data/entries";
+}
+
+function getGitHubToken() {
+  const token = tokenInput.value.trim() || sessionStorage.getItem(GITHUB_TOKEN_KEY) || "";
+  if (token) sessionStorage.setItem(GITHUB_TOKEN_KEY, token);
+  return token;
+}
+
+function setSyncStatus(message, tone = "") {
+  syncStatus.textContent = message;
+  syncStatus.className = `sync-status${tone ? ` ${tone}` : ""}`;
 }
 
 function startOfDay(date) {
@@ -119,6 +201,7 @@ function paintPixel(index) {
   renderYearBoard();
   renderMemoryStrip();
   renderPoem();
+  scheduleAutoSync();
 }
 
 function renderRain(enabled) {
@@ -298,6 +381,173 @@ function exportSnapshot() {
   URL.revokeObjectURL(url);
 }
 
+function scheduleAutoSync() {
+  if (!syncConfig.autoSync || !getGitHubToken()) return;
+  clearTimeout(syncTimer);
+  setSyncStatus("本地已保存，稍后同步到 GitHub...", "");
+  syncTimer = setTimeout(() => {
+    syncActiveEntry().catch((error) => setSyncStatus(error.message, "error"));
+  }, 1800);
+}
+
+function getEntryPoem(key) {
+  const entry = getEntry(key);
+  const counts = palette
+    .map((color) => ({
+      ...color,
+      count: entry.pixels.filter((pixel) => pixel === color.value).length,
+    }))
+    .filter((color) => color.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  if (!counts.length) {
+    return entry.rainy
+      ? "今天还没有落笔，雨丝先替你在边上写了几行。"
+      : "点下第一颗像素，今天就开始发光。";
+  }
+
+  const countText = counts
+    .slice(0, 3)
+    .map((color) => `${color.count} 次${color.poem}`)
+    .join("，");
+  const weather = entry.rainy ? "，雨在画布边缘慢慢落下" : "";
+  return `今天你用了 ${countText}，形状看起来像${guessShape(entry.pixels)}${weather}。`;
+}
+
+function entryPayload(key) {
+  const entry = getEntry(key);
+  return {
+    app: "pixel-diary",
+    version: 1,
+    date: key,
+    pixels: entry.pixels,
+    rainy: entry.rainy,
+    poem: getEntryPoem(key),
+    updatedAt: entry.updatedAt,
+    syncedAt: new Date().toISOString(),
+  };
+}
+
+function githubHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+function githubFileUrl(path) {
+  const encodedPath = path
+    .split("/")
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+  return `https://api.github.com/repos/${encodeURIComponent(syncConfig.owner)}/${encodeURIComponent(syncConfig.repo)}/contents/${encodedPath}`;
+}
+
+function encodeBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function decodeBase64(content) {
+  const binary = atob(content.replace(/\s/g, ""));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+async function githubRequest(url, options = {}) {
+  const response = await fetch(url, options);
+  if (response.status === 404) return null;
+
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    const message = data?.message || `GitHub 请求失败：${response.status}`;
+    throw new Error(message);
+  }
+  return data;
+}
+
+async function syncActiveEntry() {
+  saveSyncConfig();
+  const token = getGitHubToken();
+  if (!token) throw new Error("请先填入 GitHub token。");
+  if (!syncConfig.owner || !syncConfig.repo) throw new Error("请填写仓库主人和仓库名。");
+
+  setSyncStatus("正在把今天写进 GitHub...", "");
+  const filePath = `${syncConfig.dataPath}/${activeKey}.json`;
+  const url = `${githubFileUrl(filePath)}?ref=${encodeURIComponent(syncConfig.branch)}`;
+  const existing = await githubRequest(url, {
+    method: "GET",
+    headers: githubHeaders(token),
+  });
+
+  const payload = JSON.stringify(entryPayload(activeKey), null, 2);
+  const body = {
+    message: `Save pixel diary for ${activeKey}`,
+    content: encodeBase64(payload),
+    branch: syncConfig.branch,
+  };
+  if (existing?.sha) body.sha = existing.sha;
+
+  await githubRequest(githubFileUrl(filePath), {
+    method: "PUT",
+    headers: {
+      ...githubHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  setSyncStatus(`已保存到 GitHub：${filePath}`, "ok");
+}
+
+async function loadEntriesFromGitHub() {
+  saveSyncConfig();
+  const token = getGitHubToken();
+  if (!token) throw new Error("请先填入 GitHub token。");
+  if (!syncConfig.owner || !syncConfig.repo) throw new Error("请填写仓库主人和仓库名。");
+
+  setSyncStatus("正在从 GitHub 读取日记...", "");
+  const dirUrl = `${githubFileUrl(syncConfig.dataPath)}?ref=${encodeURIComponent(syncConfig.branch)}`;
+  const files = await githubRequest(dirUrl, {
+    method: "GET",
+    headers: githubHeaders(token),
+  });
+
+  if (!Array.isArray(files)) {
+    setSyncStatus("仓库里还没有远程日记。", "");
+    return;
+  }
+
+  const jsonFiles = files.filter((file) => file.type === "file" && file.name.endsWith(".json"));
+  let imported = 0;
+  for (const file of jsonFiles) {
+    const detail = await githubRequest(file.url, {
+      method: "GET",
+      headers: githubHeaders(token),
+    });
+    if (!detail?.content) continue;
+    const entry = JSON.parse(decodeBase64(detail.content));
+    if (!entry?.date || !Array.isArray(entry.pixels)) continue;
+    state.entries[entry.date] = {
+      pixels: entry.pixels.slice(0, totalPixels),
+      rainy: Boolean(entry.rainy),
+      updatedAt: entry.updatedAt || Date.now(),
+    };
+    imported += 1;
+  }
+
+  saveState();
+  setActiveDate(activeDate);
+  setSyncStatus(`已从 GitHub 读取 ${imported} 天日记。`, "ok");
+}
+
 drawTool.addEventListener("click", () => {
   tool = "draw";
   drawTool.classList.add("active");
@@ -313,6 +563,14 @@ eraseTool.addEventListener("click", () => {
 prevDayButton.addEventListener("click", () => moveActiveDate(-1));
 nextDayButton.addEventListener("click", () => moveActiveDate(1));
 exportButton.addEventListener("click", exportSnapshot);
+saveSyncSettingsButton.addEventListener("click", saveSyncConfig);
+syncNowButton.addEventListener("click", () => {
+  syncActiveEntry().catch((error) => setSyncStatus(error.message, "error"));
+});
+loadGitHubButton.addEventListener("click", () => {
+  loadEntriesFromGitHub().catch((error) => setSyncStatus(error.message, "error"));
+});
 
 renderPalette();
+renderSyncSettings();
 setActiveDate(activeDate);

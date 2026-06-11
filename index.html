@@ -65,6 +65,44 @@
             <h2 id="poem-title">像素诗</h2>
             <p id="poemText">点下第一颗像素，今天就开始发光。</p>
           </section>
+
+          <section class="sync-card" aria-labelledby="sync-title">
+            <div class="sync-title-row">
+              <h2 id="sync-title">GitHub 同步</h2>
+              <label class="auto-sync">
+                <input id="autoSyncInput" type="checkbox" />
+                自动同步
+              </label>
+            </div>
+            <div class="sync-grid">
+              <label>
+                仓库主人
+                <input id="repoOwnerInput" type="text" autocomplete="off" />
+              </label>
+              <label>
+                仓库名
+                <input id="repoNameInput" type="text" autocomplete="off" />
+              </label>
+              <label>
+                分支
+                <input id="branchInput" type="text" autocomplete="off" />
+              </label>
+              <label>
+                保存目录
+                <input id="dataPathInput" type="text" autocomplete="off" />
+              </label>
+            </div>
+            <label class="token-line">
+              GitHub Token
+              <input id="tokenInput" type="password" autocomplete="off" placeholder="只保存在当前浏览器会话" />
+            </label>
+            <div class="sync-actions">
+              <button class="paper-button" id="saveSyncSettingsButton" type="button">保存设置</button>
+              <button class="paper-button" id="syncNowButton" type="button">保存今天到 GitHub</button>
+              <button class="paper-button" id="loadGitHubButton" type="button">从 GitHub 读取</button>
+            </div>
+            <p class="sync-status" id="syncStatus">本地保存已开启。填入 token 后可以同步到仓库。</p>
+          </section>
         </section>
       </section>
 

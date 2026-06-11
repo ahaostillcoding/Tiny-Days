@@ -11,6 +11,18 @@
 - 年历会高亮今天，并显示已经记录过的日子。
 - 画完后会自动生成一句像素诗。
 - 雨天会在画布边缘出现像素雨丝。
+- 可选 GitHub 同步：把每天的记录保存到仓库里的 `data/entries/YYYY-MM-DD.json`。
+
+## GitHub 同步
+
+网页是纯静态页面，不能安全地把 GitHub 密钥写进代码。要把记录保存到仓库，请在页面的「GitHub 同步」区域填入一个自己的 fine-grained personal access token。
+
+建议 token 权限：
+
+- Repository access: 只选择这个仓库。
+- Contents: Read and write。
+
+Token 只保存在当前浏览器会话中，不会提交到仓库。设置后可以点击「保存今天到 GitHub」，也可以打开「自动同步」。
 
 ## 打开方式
 
